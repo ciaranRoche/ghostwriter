@@ -23,6 +23,9 @@ node_modules/
 .DS_Store
 Thumbs.db
 
+# Go
+bin/
+
 # Editor
 *.swp
 *.swo

@@ -47,11 +47,17 @@ comments for even better style matching. This is optional but recommended.
 
 ## Quickstart
 
-### 1. Fork and clone
+### 1. Install the CLI
 
 ```bash
+# From source
 gh repo fork ghostwriter/ghostwriter --clone
 cd ghostwriter
+make install
+
+# Or build locally
+make build
+./bin/gw --help
 ```
 
 ### 2. Define your style profile
@@ -82,12 +88,12 @@ Use your `profile.yaml` as a reference and paste your examples from
 ### 5. Run setup
 
 ```bash
-./scripts/setup.sh
+gw init
 ```
 
-The wizard will:
-- Check prerequisites (gh, python3, podman/docker, jq)
-- Configure your GitHub username and orgs
+The interactive wizard will:
+- Detect your container runtime (podman/docker)
+- Configure your GitHub username and orgs (auto-detected from `gh`)
 - Collect your PR review history from GitHub
 - Start Qdrant (vector database) via container
 - Ingest your writing samples
@@ -100,10 +106,81 @@ Restart your AI coding tool, then try:
 - "Write a code review comment as me"
 - "Draft feedback on this change in my voice"
 
+## CLI Reference
+
+```
+gw init                         Interactive setup wizard
+gw collect github               Collect PR reviews from GitHub
+gw ingest                       Embed and upsert samples into Qdrant
+gw install --tool <name|all>    Install style files for AI tools
+gw qdrant start|stop|status     Manage the Qdrant container
+gw config show|set|path         View and update configuration
+gw version                      Print version info
+```
+
+### `gw collect github`
+
+Collects your PR review comments from GitHub using the GraphQL API.
+
+```bash
+gw collect github                          # uses config values
+gw collect github --username myuser        # override username
+gw collect github --orgs org1,org2         # override orgs
+```
+
+### `gw ingest`
+
+Processes collected writing samples and stores them in Qdrant.
+
+```bash
+gw ingest                                  # append to existing collection
+gw ingest --reset                          # delete and recreate collection
+gw ingest --no-normalize-dashes            # disable dash-to-comma normalization
+gw ingest --qdrant-url http://host:6333    # override Qdrant URL
+gw ingest --collection my-samples          # override collection name
+```
+
+### `gw install`
+
+Installs ghostwriter style files for your AI tools.
+
+```bash
+gw install --tool opencode     # install for OpenCode
+gw install --tool claude       # install for Claude Code
+gw install --tool cursor       # install for Cursor
+gw install --tool gemini       # install for Gemini CLI
+gw install --tool windsurf     # install for Windsurf
+gw install --tool cline        # install for Cline
+gw install --tool all          # install for all tools
+```
+
+### `gw config`
+
+```bash
+gw config show                             # display current config
+gw config set github.username myuser       # set a value
+gw config set github.orgs "org1,org2"      # set orgs
+gw config path                             # print config file path
+```
+
+Configuration is stored at `~/.config/ghostwriter/config.yaml` and can be
+overridden with environment variables prefixed with `GW_` (e.g.,
+`GW_GITHUB_USERNAME`, `GW_QDRANT_URL`). Legacy environment variable names
+(`GITHUB_USERNAME`, `QDRANT_URL`, etc.) are also supported.
+
 ## Repository Structure
 
 ```
 ghostwriter/
+├── cmd/gw/                      # CLI entry point
+├── internal/
+│   ├── cli/                     # Cobra command definitions
+│   ├── config/                  # Viper-based configuration
+│   ├── collector/               # Data collection (GitHub, extensible)
+│   ├── embedder/                # Qdrant ingestion pipeline
+│   ├── installer/               # Per-tool file installation
+│   ├── container/               # Container runtime abstraction
+│   └── tui/                     # Interactive form definitions
 ├── AGENTS.md                    # Universal style instructions
 ├── style/
 │   ├── profile.example.yaml    # Style profile template
@@ -113,24 +190,14 @@ ghostwriter/
 │   └── ghostwriter/
 │       └── SKILL.md            # Skill format for OpenCode/Claude/Cline/Windsurf
 ├── rules/                      # Tool-specific rule formats
-│   ├── cursor.md               # For .cursor/rules/
-│   ├── copilot-instructions.md # For .github/copilot-instructions.md
-│   └── windsurf.md             # For .windsurf/rules/
+│   ├── cursor.md
+│   ├── copilot-instructions.md
+│   └── windsurf.md
 ├── mcp/                        # MCP config snippets per tool
-│   ├── opencode.jsonc
-│   ├── claude.jsonc
-│   ├── gemini.jsonc
-│   ├── cursor.jsonc
-│   ├── windsurf.jsonc
-│   └── cline.jsonc
-├── rag/                        # RAG data pipeline
-│   ├── compose.yaml            # Qdrant via Podman/Docker
-│   ├── collect-github-reviews.sh
-│   ├── ingest.py
-│   └── requirements.txt
-└── scripts/
-    ├── setup.sh                # Interactive setup wizard
-    └── install.sh              # Per-tool installer
+├── rag/
+│   └── compose.yaml            # Qdrant via Podman/Docker
+├── Makefile                    # Build, install, lint, test targets
+└── go.mod
 ```
 
 ## Customization Guide
@@ -160,25 +227,22 @@ primarily from seeing how you actually write. See
 Run these periodically to keep the RAG corpus current:
 
 ```bash
-./rag/collect-github-reviews.sh
-python3 rag/ingest.py --reset
+gw collect github
+gw ingest --reset
 ```
 
 ### Adding data sources
 
-The initial version supports GitHub PR reviews. To add more sources:
-
-1. Write a collection script (similar to `collect-github-reviews.sh`)
-2. Output to `rag/corpus/` in JSONL format with fields:
-   `type`, `repo`, `body`, `created_at`
-3. Run `ingest.py` to embed and store
+The `collect` command is extensible. Currently it supports GitHub PR reviews.
+Future collectors (JIRA, Slack, etc.) will be added as subcommands under
+`gw collect`. To add a custom source, output JSONL to `rag/corpus/` with
+fields: `type`, `repo`, `body`, `created_at`, then run `gw ingest`.
 
 ## RAG Architecture
 
 The optional RAG layer uses:
 
 - **Qdrant** - local vector database (runs in a container)
-- **FastEmbed** - local embedding model (BAAI/bge-small-en-v1.5, no API key needed)
 - **mcp-server-qdrant** - MCP protocol bridge between Qdrant and AI tools
 
 When an AI tool generates text in your style, it calls `qdrant-find` to
@@ -188,32 +252,32 @@ additional style reference alongside the static instructions.
 ### Managing Qdrant
 
 ```bash
-# Start (from rag/ directory)
-podman-compose up -d          # or: docker compose up -d
-
-# Stop
-podman-compose down           # or: docker compose down
-
-# Check status
-curl http://127.0.0.1:6333/collections
+gw qdrant start       # start the container
+gw qdrant stop        # stop the container
+gw qdrant status      # check health
 ```
 
 ### Dash normalization
 
-By default, the ingestion script replaces em dashes, en dashes, and double
+By default, the ingestion step replaces em dashes, en dashes, and double
 hyphens with commas in the embedded documents. This ensures the RAG examples
 match a comma-based writing style. If you naturally use dashes, disable this:
 
 ```bash
-python3 rag/ingest.py --reset --no-normalize-dashes
+gw ingest --reset --no-normalize-dashes
+```
+
+Or set it permanently:
+
+```bash
+gw config set style.normalize_dashes false
 ```
 
 ## Prerequisites
 
-- **gh** - [GitHub CLI](https://cli.github.com/) (for collecting PR reviews)
-- **python3** - Python 3.10+ (for ingestion)
+- **Go 1.21+** - for building the CLI
 - **podman** or **docker** - container runtime (for Qdrant)
-- **jq** - JSON processor (for data collection)
+- **gh** (optional) - [GitHub CLI](https://cli.github.com/) for auth token fallback
 - **mcp-server-qdrant** - `pip install mcp-server-qdrant` (for RAG layer)
 
 ## License

@@ -7,6 +7,8 @@ services:
       - "6334:6334"
     volumes:
       - qdrant_storage:/qdrant/storage:Z
+    environment:
+      - QDRANT__SERVICE__ENABLE_STATIC_CONTENT=true
     restart: unless-stopped
 
 volumes:
