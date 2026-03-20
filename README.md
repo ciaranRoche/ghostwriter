@@ -243,11 +243,13 @@ fields: `type`, `repo`, `body`, `created_at`, then run `gw ingest`.
 The optional RAG layer uses:
 
 - **Qdrant** - local vector database (runs in a container)
+- **FastEmbed** - local embedding model (`sentence-transformers/all-MiniLM-L6-v2`, no API key needed)
 - **mcp-server-qdrant** - MCP protocol bridge between Qdrant and AI tools
 
-When an AI tool generates text in your style, it calls `qdrant-find` to
-retrieve your most contextually similar past comments, then uses them as
-additional style reference alongside the static instructions.
+The `gw ingest` command uses FastEmbed (via Python) to generate embeddings
+with the same model and vector schema that `mcp-server-qdrant` uses for
+search. This means the embeddings stored by `gw` are fully compatible with
+`qdrant-find` queries at generation time.
 
 ### Managing Qdrant
 
@@ -277,6 +279,7 @@ gw config set style.normalize_dashes false
 
 - **Go 1.21+** - for building the CLI
 - **podman** or **docker** - container runtime (for Qdrant)
+- **python3** + **fastembed** - for generating embeddings (`pip install fastembed`)
 - **gh** (optional) - [GitHub CLI](https://cli.github.com/) for auth token fallback
 - **mcp-server-qdrant** - `pip install mcp-server-qdrant` (for RAG layer)
 

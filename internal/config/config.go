@@ -19,8 +19,8 @@ const (
 	// DefaultCollectionName is the default Qdrant collection name.
 	DefaultCollectionName = "writing-samples"
 
-	// DefaultEmbeddingModel is the default FastEmbed model for server-side embedding.
-	DefaultEmbeddingModel = "BAAI/bge-small-en-v1.5"
+	// DefaultEmbeddingModel is the default FastEmbed model, matching mcp-server-qdrant.
+	DefaultEmbeddingModel = "sentence-transformers/all-MiniLM-L6-v2"
 
 	// DefaultCorpusDir is the default directory for writing sample corpus files.
 	DefaultCorpusDir = "rag/corpus"
