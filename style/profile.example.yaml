@@ -1,0 +1,124 @@
+# Ghostwriter Style Profile
+# =========================
+# This file defines your personal writing style. Copy it to profile.yaml
+# and customize each section to match how you naturally write.
+#
+# Usage:
+#   cp style/profile.example.yaml style/profile.yaml
+#   $EDITOR style/profile.yaml
+#
+# This file serves as a structured reference to help you think through
+# your style before editing AGENTS.md and skills/ghostwriter/SKILL.md.
+# It is NOT auto-consumed by any tool. You use it as a guide when
+# writing your style instructions.
+
+# Who you are
+identity:
+  name: "Your Name"
+  role: "Senior Engineer"              # how you'd describe your role in reviews
+
+# Overall voice characteristics
+voice:
+  formality: casual                    # casual | neutral | formal
+  directness: high                     # low | medium | high
+  empathy: high                        # low | medium | high
+  teaching: true                       # do you explain general principles in feedback?
+  humor: occasional                    # never | occasional | frequent
+
+# Words and phrases you naturally use
+language:
+  # Do you use contractions? (gonna, doesn't, we'd, won't)
+  contractions: true
+
+  # Casual words/phrases you reach for regularly
+  colloquialisms:
+    - "gonna"
+    - "folks"
+    # Add your own...
+
+  # How you soften feedback without undermining the point
+  softeners:
+    - "might be worth"
+    - "could bite you"
+    - "worth thinking about"
+    # Add your own...
+
+  # How you connect sentences
+  connectors:
+    - "so"
+    - "but"
+    - "also"
+    - "just"
+    # Add your own...
+
+# How you format your writing
+formatting:
+  # Do you use dashes (em dash, en dash, --) as sentence connectors?
+  dashes_as_connectors: false
+
+  # Do you use emoji in technical reviews?
+  emoji_in_reviews: false
+
+  # Do you wrap code references in backticks?
+  inline_code_refs: true
+
+  # Do you include code block suggestions with alternatives?
+  code_block_suggestions: true
+
+  # How often do you use bullet points?
+  bullet_points: occasional            # never | occasional | frequent
+
+# How you typically start comments
+openings:
+  # Casual lead-ins
+  casual:
+    - "Hey, small thing:"
+    - "Heads up,"
+    - "Just want to confirm..."
+    # Add your own...
+
+  # Category prefixes for minor issues
+  prefix:
+    - "Nit:"
+    - "NP :"
+    # Add your own...
+
+  # Direct observations (jump straight into the issue)
+  direct:
+    - "This `X` skips..."
+    - "The default changed from..."
+    # Add your own...
+
+# How you structure feedback comments
+comment_structure:
+  # The pattern your comments follow
+  pattern: "observation > why it matters > suggested fix"
+
+  # Do you always explain why something matters?
+  always_explain_why: true
+
+  # Do you include code alternatives in fenced blocks?
+  include_code_alternatives: true
+
+  # Do you use real-world scenarios to explain impact?
+  # e.g., "someone running a hotfix at 2am"
+  real_world_scenarios: true
+
+# Phrases and patterns you never use
+anti_patterns:
+  - "Please be advised"
+  - "It is imperative"
+  - "It is recommended that"
+  - "Kindly ensure"
+  - "As per best practices"
+  - "LGTM (without specifics)"
+  # Add your own...
+
+# Where to collect writing samples from
+data_sources:
+  github:
+    username: "your-github-username"
+    orgs:
+      - "your-org"
+      # Add more orgs...
+  # Future: jira, slack, etc.

@@ -1,0 +1,27 @@
+// Claude Code MCP configuration
+//
+// Option 1: Add to .mcp.json in your project root (shared, committed):
+// {
+//   "mcpServers": {
+//     "writing-samples": { ...this block... }
+//   }
+// }
+//
+// Option 2: Run this command (local, per-user per-project):
+//   claude mcp add writing-samples \
+//     -e QDRANT_URL="http://127.0.0.1:6333" \
+//     -e COLLECTION_NAME="writing-samples" \
+//     -e TOOL_FIND_DESCRIPTION="Search past writing samples to find relevant examples of the user's writing voice and style." \
+//     -- mcp-server-qdrant
+{
+  "writing-samples": {
+    "command": "mcp-server-qdrant",
+    "args": [],
+    "env": {
+      "QDRANT_URL": "http://127.0.0.1:6333",
+      "COLLECTION_NAME": "writing-samples",
+      "TOOL_STORE_DESCRIPTION": "Store a writing sample for future style reference.",
+      "TOOL_FIND_DESCRIPTION": "Search past writing samples to find relevant examples of the user's writing voice, tone, and style patterns."
+    }
+  }
+}
