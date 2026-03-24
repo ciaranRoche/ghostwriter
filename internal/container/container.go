@@ -72,6 +72,33 @@ func (r *Runtime) RuntimeName() string {
 	return "docker"
 }
 
+// qdrantImage is the container image used for Qdrant.
+const qdrantImage = "docker.io/qdrant/qdrant"
+
+// qdrantContainerName is the preferred name for containers started by the CLI.
+const qdrantContainerName = "ghostwriter-qdrant"
+
+// findQdrantContainers discovers running Qdrant containers by image name.
+// This handles containers started outside the CLI (e.g., with a different name).
+func (r *Runtime) findQdrantContainers(ctx context.Context) []string {
+	cmd := exec.CommandContext(ctx, r.Command, "ps",
+		"--filter", "ancestor="+qdrantImage,
+		"--format", "{{.Names}}")
+	out, err := cmd.Output()
+	if err != nil {
+		return nil
+	}
+
+	var names []string
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		line = strings.TrimSpace(line)
+		if line != "" {
+			names = append(names, line)
+		}
+	}
+	return names
+}
+
 // StartQdrant starts the Qdrant container using compose or a direct run command.
 func (r *Runtime) StartQdrant(ctx context.Context, composeFile string) error {
 	if r.HasCompose() {
@@ -83,15 +110,20 @@ func (r *Runtime) StartQdrant(ctx context.Context, composeFile string) error {
 		return cmd.Run()
 	}
 
-	// Fall back to direct container run.
+	// Check if a Qdrant container is already running (possibly under a different name).
+	if existing := r.findQdrantContainers(ctx); len(existing) > 0 {
+		log.Info("qdrant container already running", "name", existing[0])
+		return nil
+	}
+
 	log.Debug("starting qdrant with direct run", "runtime", r.RuntimeName())
 	args := []string{
 		"run", "-d",
-		"--name", "ghostwriter-qdrant",
+		"--name", qdrantContainerName,
 		"-p", "6333:6333",
 		"-p", "6334:6334",
 		"-v", "qdrant_storage:/qdrant/storage:z",
-		"docker.io/qdrant/qdrant:latest",
+		qdrantImage + ":latest",
 	}
 	cmd := exec.CommandContext(ctx, r.Command, args...)
 	return cmd.Run()
@@ -105,12 +137,26 @@ func (r *Runtime) StopQdrant(ctx context.Context, composeFile string) error {
 		return cmd.Run()
 	}
 
-	cmd := exec.CommandContext(ctx, r.Command, "stop", "ghostwriter-qdrant")
-	if err := cmd.Run(); err != nil {
-		return err
+	// Find running Qdrant containers by image, not by hardcoded name.
+	containers := r.findQdrantContainers(ctx)
+	if len(containers) == 0 {
+		log.Warn("no running qdrant container found")
+		return nil
 	}
-	cmd = exec.CommandContext(ctx, r.Command, "rm", "-f", "ghostwriter-qdrant")
-	return cmd.Run()
+
+	for _, name := range containers {
+		log.Info("stopping qdrant container", "name", name)
+		cmd := exec.CommandContext(ctx, r.Command, "stop", name)
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("failed to stop container %s: %w", name, err)
+		}
+		cmd = exec.CommandContext(ctx, r.Command, "rm", "-f", name)
+		if err := cmd.Run(); err != nil {
+			log.Warn("failed to remove container", "name", name, "error", err)
+		}
+	}
+
+	return nil
 }
 
 // WaitForHealthy polls the Qdrant health endpoint until it responds or the timeout is reached.
