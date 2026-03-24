@@ -11,7 +11,7 @@ tools search your past writing samples for style-relevant examples.
 Your past writing samples (50-300+ docs)
         |
         v
-  rag/ingest.py (embed + store)
+  gw ingest (embed + store)
         |
         v
   Qdrant vector DB (local container, port 6333)
@@ -25,10 +25,9 @@ Your past writing samples (50-300+ docs)
 
 ## Prerequisites
 
-1. **Qdrant running** via `podman-compose up -d` or `docker compose up -d`
-   from the `rag/` directory
+1. **Qdrant running**: `gw qdrant start`
 2. **mcp-server-qdrant installed**: `pip install mcp-server-qdrant`
-3. **Corpus ingested**: run `rag/ingest.py` after collecting samples
+3. **Corpus ingested**: run `gw collect github` then `gw ingest`
 
 ## Per-Tool Setup
 

@@ -66,5 +66,5 @@ continue
 - **JIRA comments**: Export from your ticket history
 - **Slack messages**: Search for your longer technical messages
 
-The `rag/collect-github-reviews.sh` script will pull your full PR review
-history automatically. You can pick your best examples from that corpus.
+The `gw collect github` command will pull your full PR review history
+automatically. You can pick your best examples from that corpus.
