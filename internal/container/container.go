@@ -78,12 +78,18 @@ const qdrantImage = "docker.io/qdrant/qdrant"
 // qdrantContainerName is the preferred name for containers started by the CLI.
 const qdrantContainerName = "ghostwriter-qdrant"
 
-// findQdrantContainers discovers running Qdrant containers by image name.
+// findQdrantContainers discovers Qdrant containers by image name.
+// When allStates is true, it includes stopped/exited containers.
 // This handles containers started outside the CLI (e.g., with a different name).
-func (r *Runtime) findQdrantContainers(ctx context.Context) []string {
-	cmd := exec.CommandContext(ctx, r.Command, "ps",
-		"--filter", "ancestor="+qdrantImage,
-		"--format", "{{.Names}}")
+func (r *Runtime) findQdrantContainers(ctx context.Context, allStates bool) []string {
+	args := []string{"ps",
+		"--filter", "ancestor=" + qdrantImage,
+		"--format", "{{.Names}}"}
+	if allStates {
+		args = append(args, "-a")
+	}
+
+	cmd := exec.CommandContext(ctx, r.Command, args...)
 	out, err := cmd.Output()
 	if err != nil {
 		return nil
@@ -99,6 +105,28 @@ func (r *Runtime) findQdrantContainers(ctx context.Context) []string {
 	return names
 }
 
+// removeStaleContainers removes any stopped Qdrant containers that would
+// block a new container from starting with the same name.
+func (r *Runtime) removeStaleContainers(ctx context.Context) {
+	running := r.findQdrantContainers(ctx, false)
+	all := r.findQdrantContainers(ctx, true)
+
+	runningSet := make(map[string]bool, len(running))
+	for _, name := range running {
+		runningSet[name] = true
+	}
+
+	for _, name := range all {
+		if !runningSet[name] {
+			log.Debug("removing stale qdrant container", "name", name)
+			cmd := exec.CommandContext(ctx, r.Command, "rm", "-f", name)
+			if err := cmd.Run(); err != nil {
+				log.Debug("failed to remove stale container", "name", name, "error", err)
+			}
+		}
+	}
+}
+
 // StartQdrant starts the Qdrant container using compose or a direct run command.
 func (r *Runtime) StartQdrant(ctx context.Context, composeFile string) error {
 	if r.HasCompose() {
@@ -111,10 +139,13 @@ func (r *Runtime) StartQdrant(ctx context.Context, composeFile string) error {
 	}
 
 	// Check if a Qdrant container is already running (possibly under a different name).
-	if existing := r.findQdrantContainers(ctx); len(existing) > 0 {
+	if existing := r.findQdrantContainers(ctx, false); len(existing) > 0 {
 		log.Info("qdrant container already running", "name", existing[0])
 		return nil
 	}
+
+	// Remove any stopped containers that would block a new one with the same name.
+	r.removeStaleContainers(ctx)
 
 	log.Debug("starting qdrant with direct run", "runtime", r.RuntimeName())
 	args := []string{
@@ -138,7 +169,7 @@ func (r *Runtime) StopQdrant(ctx context.Context, composeFile string) error {
 	}
 
 	// Find running Qdrant containers by image, not by hardcoded name.
-	containers := r.findQdrantContainers(ctx)
+	containers := r.findQdrantContainers(ctx, false)
 	if len(containers) == 0 {
 		log.Warn("no running qdrant container found")
 		return nil
